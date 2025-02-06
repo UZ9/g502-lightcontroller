@@ -20,7 +20,7 @@ COMMANDS:
 
 ## Building:
 ```
-make clean && make
+make
 ```
 
 ## Running 
