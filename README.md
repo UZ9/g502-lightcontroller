@@ -2,16 +2,16 @@
 
 An LED controller for the G502 Hero Mouse to programatically change its colors.
 
-## Requirements:
+## Requirements
 - libusb-devel
 - G502 mouse (or a similar logitech mouse with the vendor/product ID changed)
 
-## Building:
+## Building
 ```
 make
 ```
 
-## Usage:
+## Usage
 
 Sending information to your G502 mouse requires sudo permissions by default. If you would rather run this from a user, follow these steps:
 

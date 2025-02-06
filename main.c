@@ -4,13 +4,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-// G502 ID retrieved via lsusb
-#define VID 0x046d // G502 Vender ID
-#define PID 0xc08b // G502 Product ID
-
+// G502 specifc data retrieved via lsusb
+#define G502_VID 0x046d // G502 Vender ID
+#define G502_PID 0xc08b // G502 Product ID
 #define G502_INTERFACE 0x01
 
-// Captured via wireshark, mouse config is sent via SET_REPORT
+// G502 magic numbers pulled via wireshark
+#define G502_MAGIC_NUMBER_1 0x11
+#define G502_MAGIC_NUMBER_2 0xff
+#define G502_MAGIC_NUMBER_3 0x02
+#define G502_MAGIC_NUMBER_4 0x3c
+
+// SET_REPORT config pulled via wireshark, mouse config is sent via SET_REPORT
 // note: endian is reversed
 #define USB_REQUEST_TYPE 0x21
 #define USB_REQUEST 0x09
@@ -35,9 +40,9 @@ static int set_mouse_color(uint8_t interface, uint8_t red, uint8_t blue,
 
   libusb_device_handle *handle;
 
-  LOG_DEBUG("Opening device with VID:PID %04x/%04x\n", VID, PID);
+  LOG_DEBUG("Opening device with VID:PID %04x/%04x\n", G502_VID, G502_PID);
 
-  handle = libusb_open_device_with_vid_pid(NULL, VID, PID);
+  handle = libusb_open_device_with_vid_pid(NULL, G502_VID, G502_PID);
 
   if (handle == NULL) {
     fprintf(stderr, "ERROR: Failed opening device");
@@ -68,14 +73,26 @@ static int set_mouse_color(uint8_t interface, uint8_t red, uint8_t blue,
   }
 
   unsigned char data[] = {
-      0x11,      0xff, 0x02, 0x3c, // g502 magic numbers*/
-      interface,                   // interface: 0x01 for logo*/
-      0x01,  // config: 0x00 off, 0x01 fixed, 0x02 breathing, 0x03 cycle*/
-      red,   // red component*/
-      blue,  // blue component*/
-      green, // green component*/
-      0x02,      0x00, 0x00, // fixed config*/
-      0x00,      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+      G502_MAGIC_NUMBER_1,
+      G502_MAGIC_NUMBER_2,
+      G502_MAGIC_NUMBER_3,
+      G502_MAGIC_NUMBER_4,
+      interface, // interface: 0x01 for logo*/
+      0x01,      // config: 0x00 off, 0x01 fixed, 0x02 breathing, 0x03 cycle*/
+      red,       // red component*/
+      blue,      // blue component*/
+      green,     // green component*/
+      0x02,
+      0x00,
+      0x00, // fixed config*/
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00};
 
   // at this point, we have the interface: let's add a solid color
   int result =
@@ -117,8 +134,6 @@ void printUsage() {
 }
 
 int validateHex(char *hex) {
-  // check for 0x
-
   int strLen = strlen(hex);
 
   // valid formats: 0xRRGGBB, 000000
