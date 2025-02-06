@@ -1,5 +1,5 @@
 CC = gcc
-CLAGS = -g 
+CFLAGS = -g -Wall -Wextra -Werror -pedantic 
 RM = rm -f
 
 default: all

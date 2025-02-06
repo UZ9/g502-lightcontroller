@@ -29,11 +29,11 @@ enum G502_LED_ID { LOGO_LED = 0x01, DPI_LED = 0x00 };
 
 static int set_mouse_color(uint8_t interface, uint8_t red, uint8_t blue,
                            enum G502_LED_ID green) {
+  int ret = -1;
+
   libusb_init_context(NULL, NULL, 0);
 
   libusb_device_handle *handle;
-  libusb_device *device;
-  uint8_t bus;
 
   LOG_DEBUG("Opening device with VID:PID %04x/%04x\n", VID, PID);
 
@@ -41,7 +41,7 @@ static int set_mouse_color(uint8_t interface, uint8_t red, uint8_t blue,
 
   if (handle == NULL) {
     fprintf(stderr, "ERROR: Failed opening device");
-    return -1;
+    goto cleanup;
   }
 
   // check for kernel driver
@@ -54,7 +54,7 @@ static int set_mouse_color(uint8_t interface, uint8_t red, uint8_t blue,
       const char *error_name = libusb_error_name(result);
       fprintf(stderr, "ERROR: %d %s while claiming interface", result,
               error_name);
-      return -1;
+      goto cleanup;
     }
   }
 
@@ -85,26 +85,25 @@ static int set_mouse_color(uint8_t interface, uint8_t red, uint8_t blue,
   if (result < 0) {
     const char *error_name = libusb_error_name(result);
     fprintf(stderr, "ERROR: %d %s while sending packet", result, error_name);
-    libusb_release_interface(handle, G502_INTERFACE);
-    libusb_attach_kernel_driver(handle, G502_INTERFACE);
-    libusb_close(handle);
-    libusb_exit(NULL);
-
-    return -1;
+    goto cleanup;
   }
 
   LOG_DEBUG("Closing device...\n");
 
-  libusb_release_interface(handle, G502_INTERFACE);
+cleanup:
+  if (handle) {
+    libusb_release_interface(handle, G502_INTERFACE);
 
-  // re-enable the kernel--this is quite important, as I accidentally lost all
-  // peripherals from forgetting this
-  libusb_attach_kernel_driver(handle, G502_INTERFACE);
+    // re-enable the kernel--this is quite important, as I accidentally lost all
+    // peripherals from forgetting this
+    libusb_attach_kernel_driver(handle, G502_INTERFACE);
 
-  libusb_close(handle);
+    libusb_close(handle);
+  }
+
   libusb_exit(NULL);
 
-  return 0;
+  return ret;
 }
 
 void printUsage() {
@@ -140,8 +139,9 @@ int validateHex(char *hex) {
 
   for (int i = start; i < strLen; i++) {
     // check each character for valid format
-    if (!(hex[i] >= '0' && hex[i] <= '9' || hex[i] >= 'A' && hex[i] <= 'F' ||
-          hex[i] >= 'a' && hex[i] <= 'f')) {
+    if (!((hex[i] >= '0' && hex[i] <= '9') ||
+          (hex[i] >= 'A' && hex[i] <= 'F') ||
+          (hex[i] >= 'a' && hex[i] <= 'f'))) {
       return -1;
     }
   }
@@ -156,7 +156,6 @@ int main(int argc, char *argv[]) {
   }
 
   char *input = argv[1];
-  int passed = 0;
 
   if (strcmp(input, "logo-light") == 0) {
     if (validateHex(argv[2]) == -1) {
